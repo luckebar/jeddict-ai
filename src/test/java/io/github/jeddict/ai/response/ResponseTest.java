@@ -1,6 +1,6 @@
 package io.github.jeddict.ai.response;
 
-import io.github.jeddict.ai.test.BaseTest;
+import io.github.jeddict.ai.test.TestBase;
 import java.io.File;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.Set;
 
 import static org.assertj.core.api.BDDAssertions.then;
-import static org.assertj.core.api.BDDAssertions.thenThrownBy;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -21,9 +20,9 @@ import org.openide.filesystems.FileUtil;
 
 //
 // TODO: remove setBlocks
-// TODO: make ir a record
+// TODO: make it a record
 //
-public class ResponseTest extends BaseTest {
+public class ResponseTest extends TestBase {
 
     private final String query = "What is Java?";
     private Set<FileObject> messageContext;
@@ -37,24 +36,23 @@ public class ResponseTest extends BaseTest {
 
     @Test
     void response_initializes_query_and_message_context() {
-        final String responseText = "Java is a programming language.";
+        final String responseText1 = "Java is a programming language.";
+        final String responseText2 = "Java is the best programming language.";
 
-        final Response response = new Response(query, responseText, messageContext);
+        Response response = new Response(query, responseText1, messageContext);
 
         then(response.getQuery()).isEqualTo(query);
         then(response.getMessageContext()).isSameAs(messageContext);
         then(response.getBlocks()).hasSize(1);
         then(response.getBlocks().get(0).getType()).isEqualTo("text");
-        then(response.getBlocks().get(0).getContent()).isEqualTo(responseText);
-    }
+        then(response.getBlocks().get(0).getContent()).isEqualTo(responseText1);
 
-    @ParameterizedTest
-    @NullAndEmptySource
-    @ValueSource(strings = {"   ", "\t", "\n"})
-    void constructor_throws_exception_for_invalid_query(String invalidQuery) {
-        thenThrownBy(() -> new Response(invalidQuery, "valid response", messageContext))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("query can not be null or empty");
+        response = new Response(null, responseText2, null);
+        then(response.getQuery()).isNull();
+        then(response.getMessageContext()).isEmpty();
+        then(response.getBlocks()).hasSize(1);
+        then(response.getBlocks().get(0).getType()).isEqualTo("text");
+        then(response.getBlocks().get(0).getContent()).isEqualTo(responseText2);
     }
 
     @ParameterizedTest
@@ -64,13 +62,6 @@ public class ResponseTest extends BaseTest {
         final Response response = new Response(query, invalidResponse, messageContext);
 
         then(response.getBlocks()).isEmpty();
-    }
-
-    @Test
-    void constructor_throws_exception_for_null_message_context() {
-        thenThrownBy(() -> new Response(query, "valid response", null))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("messageContext can not be null");
     }
 
     @Test

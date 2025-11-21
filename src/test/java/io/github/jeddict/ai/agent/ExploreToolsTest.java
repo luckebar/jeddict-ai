@@ -16,7 +16,7 @@
 package io.github.jeddict.ai.agent;
 
 import com.github.caciocavallosilano.cacio.ctc.junit.CacioTest;
-import io.github.jeddict.ai.test.BaseTest;
+import io.github.jeddict.ai.test.TestBase;
 import java.io.File;
 import org.apache.commons.io.FileUtils;
 import static org.assertj.core.api.BDDAssertions.then;
@@ -24,7 +24,7 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 @CacioTest
-public class ExploreToolsTest extends BaseTest {
+public class ExploreToolsTest extends TestBase {
 
     @Test
     public void listClassesInFile_with_non_existing_file_returns_file_not_found()

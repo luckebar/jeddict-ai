@@ -15,6 +15,7 @@
  */
 package io.github.jeddict.ai.util;
 
+import static io.github.jeddict.ai.settings.PreferencesManager.JEDDICT_CONFIG;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -103,4 +104,29 @@ public class FileUtil {
         }
         return p.toAbsolutePath().normalize();
     }
+
+
+    public static Path getConfigPath() {
+        final String os = System.getProperty("os.name").toLowerCase();
+        final Path userHome = Paths.get(System.getProperty("user.home"));
+
+        if (os.contains("win")) {
+            final String appData = System.getenv("APPDATA");
+            final Path basePath;
+            if (appData != null && !appData.isEmpty()) {
+                basePath = Paths.get(appData);
+            } else {
+                basePath = userHome.resolve("AppData").resolve("Roaming");
+            }
+
+            return basePath.resolve("jeddict");
+        } else if (os.contains("mac")) {
+            return userHome.resolve("Library/Application Support").resolve("jeddict");
+        } else if (os.contains("linux")) {
+            return userHome.resolve(".config").resolve("jeddict");
+        } else {
+            return userHome.resolve(JEDDICT_CONFIG);
+        }
+    }
+
 }

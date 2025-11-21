@@ -32,6 +32,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import static java.util.stream.Collectors.toList;
 import javax.lang.model.element.Element;
@@ -231,15 +232,6 @@ public class ProjectClassScanner {
         models.clear();
     }
 
-    public static JeddictBrain getJeddictChatModel(FileObject fileObject) {
-//        String key = fileObject.toURL().toString();
-//        if (models.get(key) == null) {
-//            models.put(key, new JeddictChatModel());
-//        }
-//        return models.get(key);
-        return new JeddictBrain();
-    }
-
     public static FileObject getFileObjectFromEditor(Document document) {
         if (document == null) {
             JTextComponent editor = EditorRegistry.lastFocusedComponent();
@@ -256,7 +248,10 @@ public class ProjectClassScanner {
         return null;
     }
 
-    public static List<ClassData> getClassData(FileObject fileObject, Set<String> findReferencedClasses, AIClassContext classAnalysisContext) {
+    public static List<ClassData> getClassData(
+        final FileObject fileObject, final Set<String> findReferencedClasses, final AIClassContext classAnalysisContext
+    ) {
+        final Logger LOG = Logger.getLogger(ProjectClassScanner.class.getCanonicalName());
 
         if (classAnalysisContext == AIClassContext.CURRENT_CLASS
                 || fileObject == null) {
@@ -279,11 +274,11 @@ public class ProjectClassScanner {
                         DataObject javaFile = iterator.next();
                         if (javaFile.getPrimaryFile().equals(fileObject)) {
                             // Ignore current editor
-                            System.out.println("Ignoring " + fileObject.getName());
+                            LOG.finest(() -> "Ignoring " + fileObject.getName());
                         } else {
                             // Remove safely using the iterator
                             iterator.remove();
-                            System.out.println("Rescanning " + javaFile.getName());
+                            LOG.finest(() -> "Rescanning " + javaFile.getName());
                             scanJavaFile(javaFile, classData.get(key));
                         }
                     }

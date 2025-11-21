@@ -155,15 +155,12 @@ public class EditorUtil {
         } else {
             code.append('\n').append(block.getContent()).append('\n');
             String mimeType = getMimeType(block.getType());
-            if (MIME_PUML.equals(mimeType)) {
-                pane = topComponent.createSVGPane(block);
-            } else if (MIME_MARKDOWN.equals(mimeType)) {
-                pane = topComponent.createMarkdownPane(block);
-            } else if (MIME_MERMAID.equals(mimeType)) {
-                pane = topComponent.createMermaidPane(block);
-            } else {
-                pane = topComponent.createCodePane(mimeType, block);
-            }
+            pane = switch (mimeType) {
+                case MIME_PUML -> topComponent.createSVGPane(block);
+                case MIME_MARKDOWN -> topComponent.createMarkdownPane(block);
+                case MIME_MERMAID -> topComponent.createMermaidPane(block);
+                default -> topComponent.createCodePane(mimeType, block);
+            };
         }
         return pane;
     }

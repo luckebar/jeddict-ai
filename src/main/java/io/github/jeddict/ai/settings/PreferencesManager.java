@@ -21,8 +21,8 @@ package io.github.jeddict.ai.settings;
  */
 import io.github.jeddict.ai.response.TokenGranularity;
 import static io.github.jeddict.ai.settings.GenAIModel.DEFAULT_MODEL;
+import io.github.jeddict.ai.util.FileUtil;
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URLDecoder;
@@ -43,9 +43,18 @@ import org.json.JSONObject;
 import org.netbeans.api.editor.mimelookup.MimeLookup;
 import org.netbeans.api.project.Project;
 
+import java.nio.file.Path;
+import java.io.IOException;
+import java.util.logging.Logger;
+
 public class PreferencesManager {
 
+    public static final String JEDDICT_CONFIG = "jeddict-config.json";
+
+    private final Logger LOG = Logger.getLogger(PreferencesManager.class.getName());
+
     private final FilePreferences preferences;
+
     private static final String API_KEY_ENV_VAR = "OPENAI_API_KEY";
     private static final String API_KEY_SYS_PROP = "openai.api.key";
     private static final String MODEL_ENV_VAR = "OPENAI_MODEL";
@@ -168,7 +177,11 @@ public class PreferencesManager {
     private TokenGranularity tokenGranularity;
 
     private PreferencesManager() {
-        preferences = new FilePreferences();
+        final Path configPath = FileUtil.getConfigPath();
+        final Path configFile = configPath.resolve(JEDDICT_CONFIG);
+
+        preferences = new FilePreferences(configFile);
+
     }
 
     private static PreferencesManager instance;
@@ -362,6 +375,28 @@ public class PreferencesManager {
         preferences.put(MODEL_PREFERENCE_LIST+"_"+providerName, jsonArray.toString());
     }
 
+    public void setModelList(List<String> models) {
+        JSONArray jsonArray = new JSONArray();
+        for (String model : models) {
+            jsonArray.put(model);
+        }
+        preferences.put(MODEL_LIST, jsonArray.toString());
+    }
+
+    public void setGenAIModelList(List<GenAIModel> models, String providerName) {
+        JSONArray jsonArray = new JSONArray();
+        for (GenAIModel model : models) {
+            JSONObject modelJson = new JSONObject();
+            modelJson.put("provider", model.getProvider().name());
+            modelJson.put("name", model.getName());
+            modelJson.put("description", model.getDescription());
+            modelJson.put("inputPrice", model.getInputPrice());
+            modelJson.put("outputPrice", model.getOutputPrice());
+            jsonArray.put(modelJson);
+        }
+        preferences.put(MODEL_PREFERENCE_LIST+"_"+providerName, jsonArray.toString());
+    }
+
     public List<GenAIModel> getGenAIModelList(String providerName) {
         String jsonString = preferences.get(MODEL_PREFERENCE_LIST+"_"+providerName, "[]");
         JSONArray jsonArray = new JSONArray(jsonString);
@@ -384,7 +419,7 @@ public class PreferencesManager {
         }
         return models;
     }
-    
+
     public GenAIModel getGenAIModelByName(String providerName, String modelName) {
         List<GenAIModel> models = getGenAIModelList(providerName);
         return models.stream()
@@ -392,7 +427,7 @@ public class PreferencesManager {
                 .findFirst()
                 .orElse(null);
     }
-    
+
     public Map<String, GenAIModel> getGenAIModelMap(String providerName) {
         String jsonString = preferences.get(MODEL_PREFERENCE_LIST+"_"+providerName, "[]");
         JSONArray jsonArray = new JSONArray(jsonString);
@@ -425,7 +460,7 @@ public class PreferencesManager {
         }
         return models;
     }
-    
+
     public String getChatModel() {
         return preferences.get(CHAT_MODEL_PREFERENCE, getModel());
     }
@@ -691,6 +726,9 @@ public class PreferencesManager {
         userPrompts = map;
     }
 
+    //
+    // Should we move the conversion to module loading?
+    //
     public String getGlobalRules() {
         // First check for old key "systemMessage"
         String oldValue = preferences.get("systemMessage", null);
@@ -717,7 +755,7 @@ public class PreferencesManager {
     public void setProjectRules(Project project, String message) {
         preferences.put(project.getProjectDirectory().getName() + "-" + PROJECT_RULES_PREFERENCE, message);
     }
-    
+
     /**
      * Get the build command for the given project.
      * <p>
@@ -803,7 +841,7 @@ public class PreferencesManager {
     public void setTestCommand(Project project, String command) {
         preferences.put(project.getProjectDirectory().getName() + "-" + TEST_COMMAND_PREFERENCE, command);
     }
-    
+
     public String getAssistantAction() {
         return preferences.get(ASSISTANT_ACTION_PREFERENCE, "");
     }
@@ -988,5 +1026,4 @@ public class PreferencesManager {
     public void setLastBrowseDirectory(String directory) {
         preferences.put(LAST_BROWSE_DIRECTORY_PREFERENCE, directory);
     }
-
 }

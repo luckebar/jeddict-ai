@@ -11,14 +11,17 @@ on:
         description: 'Trigger a release to Maven Central'
         required: false
         default: 'false'
-        
+
 permissions:
   contents: read
   security-events: write
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
 
     steps:
     - uses: actions/checkout@v4

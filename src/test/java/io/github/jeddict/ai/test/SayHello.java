@@ -1,11 +1,20 @@
+//
+// DO NOT CHANGE THIS CLASS. IT IS USED IN MANY TEST CASES AND POSITION OF TEXT
+// IS RELEVANT AND IMPORTANT.
+//
 package io.github.jeddict.ai.test;
 
+import jakarta.ws.rs.Path;
+
+@Path("/greetings")  // to test create rest endpoint hint
 public class SayHello {
-    /**
-     * Prints a hello message to standard output.
-     * @param name the name to include in the hello message
-     */
     public void sayHello(String name) {
-        System.out.println("Hello, " + name + "!");
+        if (name != null) {
+            System.out.println("Hello, " + name + "!");
+        } else {
+            System.out.println("What's your name?");
+        }
     }
+
+    class InnerClass { } /* to test inner class suggestions */
 }

@@ -103,12 +103,12 @@ public class JeddictHint {
             case INTERFACE:
                 TypeElement type = (TypeElement) compilationInfo.getTrees().getElement(treePath);
                 ElementHandle<TypeElement> elementHandle = ElementHandle.create(type);
-                fixes.add(new JavaDocFixImpl(tpHandle, Action.CREATE, elementHandle).toEditorFix());
+                fixes.add(new JavaDocFix(tpHandle, Action.CREATE, elementHandle).toEditorFix());
                 if (oldDocCommentTree != null) {
-                    fixes.add(new JavaDocFixImpl(tpHandle, Action.ENHANCE, elementHandle).toEditorFix());
+                    fixes.add(new JavaDocFix(tpHandle, Action.ENHANCE, elementHandle).toEditorFix());
                 }
                 if (type.getAnnotationMirrors().stream().anyMatch(a -> a.getAnnotationType().toString().equals("jakarta.ws.rs.Path"))) {
-                    fixes.add(new RestEndpointFix(tpHandle, Action.CREATE, elementHandle).toEditorFix());
+                    fixes.add(new RestEndpointFix(tpHandle, Action.CREATE).toEditorFix());
                 }
                 fixes.add(new AssistantChatManager(tpHandle, Action.LEARN, treePath).toEditorFix());
                 fixes.add(new AssistantChatManager(tpHandle, Action.TEST, treePath).toEditorFix());
@@ -134,12 +134,12 @@ public class JeddictHint {
                 if (methodElement != null && methodElement.getKind() == ElementKind.METHOD) {
                     ElementHandle<ExecutableElement> methodHandle = ElementHandle.create((ExecutableElement) methodElement);
                     tpHandle = TreePathHandle.create(treePath, compilationInfo);
-                    fixes.add(new JavaDocFixImpl(tpHandle, Action.CREATE, methodHandle).toEditorFix());
+                    fixes.add(new JavaDocFix(tpHandle, Action.CREATE, methodHandle).toEditorFix());
                     if (oldDocCommentTree != null) {
-                        fixes.add(new JavaDocFixImpl(tpHandle, Action.ENHANCE, methodHandle).toEditorFix());
+                        fixes.add(new JavaDocFix(tpHandle, Action.ENHANCE, methodHandle).toEditorFix());
                     }
-                    fixes.add(new MethodFix(tpHandle, Action.CREATE, methodHandle).toEditorFix());
-                    fixes.add(new MethodFix(tpHandle, Action.ENHANCE, methodHandle).toEditorFix());
+                    fixes.add(new MethodFix(tpHandle, Action.CREATE).toEditorFix());
+                    fixes.add(new MethodFix(tpHandle, Action.ENHANCE).toEditorFix());
                     for (Diagnostic<?> d : ctx.getInfo().getDiagnostics()) {
                         if (isDiagnosticRelatedToMethod(d, compilationInfo, treePath.getLeaf())) {
                             if (d.getKind() == Diagnostic.Kind.ERROR) {
@@ -162,9 +162,9 @@ public class JeddictHint {
                 if (fieldElement != null && fieldElement.getKind() == ElementKind.FIELD) {
                     ElementHandle<VariableElement> fieldHandle = ElementHandle.create((VariableElement) fieldElement);
                     tpHandle = TreePathHandle.create(treePath, compilationInfo);
-                    fixes.add(new JavaDocFixImpl(tpHandle, Action.CREATE, fieldHandle).toEditorFix());
+                    fixes.add(new JavaDocFix(tpHandle, Action.CREATE, fieldHandle).toEditorFix());
                     if (oldDocCommentTree != null) {
-                        fixes.add(new JavaDocFixImpl(tpHandle, Action.ENHANCE, fieldHandle).toEditorFix());
+                        fixes.add(new JavaDocFix(tpHandle, Action.ENHANCE, fieldHandle).toEditorFix());
                     }
                 }
                 fixes.add(new VariableNameFix(tpHandle, Action.ENHANCE, treePath).toEditorFix());

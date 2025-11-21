@@ -19,7 +19,6 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.exception.AuthenticationException;
 import dev.langchain4j.exception.ModelNotFoundException;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import io.github.jeddict.ai.JeddictUpdateManager;
 import io.github.jeddict.ai.agent.AbstractTool;
 import io.github.jeddict.ai.components.AssistantChat;
@@ -45,23 +44,28 @@ import org.netbeans.api.progress.ProgressHandle;
 import org.openide.util.NbBundle;
 
 /**
+ * Purpose of this class is to receive events emitted by the JeddictBrain system
+ * and react accordingly in the NetBeans platform. It is intended to be used for
+ * any kind of models,  streaming and not-streaming, tooling and not tooling,
+ * Q&A and agentic.
+ *
  *
  * @author Shiwani Gupta
  */
-public abstract class JeddictStreamHandler
-    implements StreamingChatResponseHandler, PropertyChangeListener
+public abstract class JeddictBrainListener
+    implements PropertyChangeListener
 {
 
     private final AssistantChat topComponent;
     private boolean init = true;
     private JTextArea textArea;
-    private ProgressHandle handle;
+    private final ProgressHandle handle;
     private boolean complete;
     protected final StringBuilder toolingResponse = new StringBuilder();
 
-    private static final Logger LOG = Logger.getLogger(JeddictStreamHandler.class.getName());
+    private static final Logger LOG = Logger.getLogger(JeddictBrainListener.class.getName());
 
-    public JeddictStreamHandler(AssistantChat topComponent) {
+    public JeddictBrainListener(AssistantChat topComponent) {
         this.topComponent = topComponent;
 
         handle = ProgressHandle.createHandle(NbBundle.getMessage(JeddictUpdateManager.class, "ProgressHandle", 0));
@@ -77,24 +81,26 @@ public abstract class JeddictStreamHandler
         LOG.finest(() -> String.valueOf(e));
         final String name = e.getPropertyName();
 
-        switch (name) {
-            case JeddictBrain.PROPERTY_TOKENS: {
+
+        if (name.equals(JeddictBrain.EventProperty.CHAT_TOKENS.name)) {
+            SwingUtilities.invokeLater(() -> {
                 final String progress = NbBundle.getMessage(JeddictUpdateManager.class, "ProgressHandle", (int)e.getNewValue());
                 handle.progress(progress);
                 handle.setDisplayName(progress);
-            }; break;
-            case JeddictBrain.PROPERTY_ERROR: {
-                onError((Exception)e.getNewValue());
-            }; break;
-            case AbstractTool.PROPERTY_MESSAGE: {
-                final String msg = (String)e.getNewValue();
-                toolingResponse.append(msg).append('\n');
-                onPartialResponse(msg);
-            }; break;
+            });
+        } else if (name.equals(JeddictBrain.EventProperty.CHAT_PARTIAL.name)) {
+            onPartialResponse((String)e.getNewValue());
+        } else if (name.equals(JeddictBrain.EventProperty.CHAT_COMPLETED.name)) {
+            onCompleteResponse((ChatResponse)e.getNewValue());
+        } else if (name.equals(JeddictBrain.EventProperty.CHAT_ERROR)) {
+            onError((Exception)e.getNewValue());
+        } else if (name.equals(AbstractTool.PROPERTY_MESSAGE)) {
+            final String msg = (String)e.getNewValue() + '\n';
+            toolingResponse.append(msg);
+            onPartialResponse(msg);
         }
     }
 
-    @Override
     public void onPartialResponse(String partialResponse) {
         LOG.finest(() -> "partial response: " + partialResponse);
         if (init) {
@@ -107,11 +113,23 @@ public abstract class JeddictStreamHandler
         }
     }
 
+    public void onCompleteResponse(ChatResponse completeResponse) {
+        LOG.finest(() -> "complete response received: " + completeResponse);
+        complete = true;
+
+        String response = completeResponse.aiMessage().text();
+        if (response != null && !response.isEmpty()) {
+            CompletableFuture.runAsync(() -> TokenHandler.saveOutputToken(response));
+        }
+        SwingUtilities.invokeLater(() -> {
+            handle.finish();
+        });
+    }
+
     public boolean isComplete() {
         return complete;
     }
 
-    @Override
     public void onError(final Throwable throwable) {
         LOG.finest(() -> "error received: " + throwable);
 
@@ -138,19 +156,6 @@ public abstract class JeddictStreamHandler
             showError(throwable.getMessage());
         }
 
-    }
-
-    @Override
-    public void onCompleteResponse(ChatResponse completeResponse) {
-        LOG.finest(() -> "complete response received: " + completeResponse);
-        complete = true;
-        SwingUtilities.invokeLater(() -> {
-            String response = completeResponse.aiMessage().text();
-            if (response != null && !response.isEmpty()) {
-                CompletableFuture.runAsync(() -> TokenHandler.saveOutputToken(response));
-            }
-            handle.finish();
-        });
     }
 
     private void confirmApiKey() {

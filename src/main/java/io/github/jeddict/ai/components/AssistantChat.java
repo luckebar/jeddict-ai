@@ -303,7 +303,7 @@ public class AssistantChat extends TopComponent {
         JTextArea textArea = new JTextArea();
         textArea.setEditable(false);
         Font newFont = getFontFromMimeType(MIME_PLAIN_TEXT);
-        Font emojiFont = new Font("Segoe UI Emoji", newFont.getStyle(), newFont.getSize());
+        Font emojiFont = new Font("Segoe UI Emoji", newFont.getStyle(), newFont.getSize());  // TODO: what if the font does not exist?
         java.awt.Color textColor = getTextColorFromMimeType(MIME_PLAIN_TEXT);
         java.awt.Color backgroundColor = getBackgroundColorFromMimeType(MIME_PLAIN_TEXT);
         textArea.setFont(emojiFont);
@@ -351,6 +351,7 @@ public class AssistantChat extends TopComponent {
                 content.setContent(editorPane.getText());
             }
         });
+        editorPane.setCaretPosition(0); // moving the highlighted line to the first line
         addContextMenu(editorPane);
         addEditorPaneRespectingTextArea(editorPane);
         return editorPane;

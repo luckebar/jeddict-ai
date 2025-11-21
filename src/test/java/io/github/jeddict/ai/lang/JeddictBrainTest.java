@@ -15,99 +15,52 @@
  */
 package io.github.jeddict.ai.lang;
 
-import com.github.caciocavallosilano.cacio.ctc.junit.CacioTest;
-import static com.github.stefanbirkner.systemlambda.SystemLambda.restoreSystemProperties;
 import io.github.jeddict.ai.agent.AbstractTool;
+import io.github.jeddict.ai.agent.pair.PairProgrammer;
+import static io.github.jeddict.ai.agent.pair.PairProgrammer.Specialist.TEST;
 import io.github.jeddict.ai.settings.PreferencesManager;
-import io.github.jeddict.ai.test.DummyStreamHandler;
 import io.github.jeddict.ai.test.DummyTool;
+import io.github.jeddict.ai.test.TestBase;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import static org.assertj.core.api.BDDAssertions.then;
 import static org.assertj.core.api.BDDAssertions.thenThrownBy;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
+
 
 /**
- *
+ * The JeddictBrainTest class is a test class that extends TestBase.
+ * It contains unit tests for the JeddictBrain class, verifying its constructors,
+ * listener management, and functionality such as code analysis.
  */
-@CacioTest  // TODO: this shall be removed once JeddictBrain will be free of UI dependency
-public class JeddictBrainTest {
-
-    //
-    // Settings are currently saved in a file in the user home (see
-    // PreferencesManager and FilePreferences). To be able to manipulate them
-    // without side effects, we set up a different user home
-    //
-    @TempDir
-    private Path HOME;
-
-    private PreferencesManager preferences;
-
-    @BeforeEach
-    public void before() throws Exception {
-        Files.copy(Paths.get("src/test/resources/settings/jeddict.json"), HOME.resolve("jeddict.json"));
-
-        //
-        // Making sure the singleton is initilazed with a testing configuration
-        // file under a temporary directory
-        //
-        restoreSystemProperties(() -> {
-            System.setProperty("user.home", HOME.toAbsolutePath().toString());
-
-            preferences = PreferencesManager.getInstance();
-        });
-    }
+public class JeddictBrainTest extends TestBase {
 
     @Test
     public void constructors() throws Exception {
-        final DummyStreamHandler H = new DummyStreamHandler();
-        final String N1 = "jeddict", N2 = "jeddict2";
+        final String N1 = "dummy", N2 = "dummy2";
         final List<AbstractTool> T = List.of();
-
-        JeddictBrain brain = new JeddictBrain();
-        then(brain.modelName).isNull();
-        then(brain.streamHandler).isEmpty();
-        then(brain.streamingChatModel).isEmpty();  // TODO: I am not sure this should be exposed
-        then(brain.chatModel).isEmpty();
-        then(brain.tools).isEmpty();
 
         PreferencesManager.getInstance().setStreamEnabled(true);
 
-        brain = new JeddictBrain(N1, H, true, T);
+        JeddictBrain brain = new JeddictBrain(N1, true, T);
 
         then(brain.modelName).isSameAs(N1);
-        then(brain.streamHandler).hasValue(H);
         then(brain.streamingChatModel).isNotEmpty();
         then(brain.chatModel).isEmpty();
         then(brain.tools).isEmpty();
 
-        brain = new JeddictBrain(N1, null, true, null);
-
-        then(brain.modelName).isSameAs(N1);
-        then(brain.streamHandler).isEmpty();
-        then(brain.streamingChatModel).isEmpty();
-        then(brain.chatModel).isNotEmpty();
-        then(brain.tools).isEmpty();
-
-        brain = new JeddictBrain(N2, H, false, T);
+        brain = new JeddictBrain(N2, false, T);
 
         then(brain.modelName).isSameAs(N2);
-        then(brain.streamHandler).isNotEmpty();
         then(brain.streamingChatModel).isEmpty();
         then(brain.chatModel).isNotEmpty();
         then(brain.tools).isEmpty();
 
         final DummyTool D = new DummyTool();
-        brain = new JeddictBrain(N2, H, true, List.of(D));
+        brain = new JeddictBrain(N2, true, List.of(D));
 
         then(brain.modelName).isSameAs(N2);
-        then(brain.streamHandler).isNotEmpty();
         then(brain.streamingChatModel).isNotEmpty();
         then(brain.chatModel).isEmpty();
         then(brain.tools).isNotSameAs(T).containsExactly(D);
@@ -116,14 +69,13 @@ public class JeddictBrainTest {
     @Test
     public void constructors_sanity_check() {
         thenThrownBy(() -> {
-            new JeddictBrain(null, new DummyStreamHandler(), false, List.of());
+            new JeddictBrain(null, false, List.of());
         }).isInstanceOf(IllegalArgumentException.class)
         .hasMessage("modelName can not be null");
     }
 
     @Test
     public void add_and_remove_listeners() {
-        final DummyStreamHandler H = new DummyStreamHandler();
         final String N = "jeddict";
 
         final PropertyChangeListener L1 = new PropertyChangeListener() {
@@ -135,19 +87,55 @@ public class JeddictBrainTest {
             public void propertyChange(PropertyChangeEvent pce) { }
         };
 
-        JeddictBrain brain = new JeddictBrain(N, H, false, List.of());
+        final JeddictBrain brain = new JeddictBrain(N, false, List.of());
 
-        then(brain.progressListeners.getPropertyChangeListeners()).isEmpty();
+        then(brain.getSupport().getPropertyChangeListeners()).isEmpty();
 
         brain.addProgressListener(L1);
         brain.addProgressListener(L2);
-        then(brain.progressListeners.getPropertyChangeListeners()).containsExactlyInAnyOrder(L1, L2);
+        then(brain.getSupport().getPropertyChangeListeners()).containsExactlyInAnyOrder(L1, L2);
 
         brain.removeProgressListener(L2);
-        then(brain.progressListeners.getPropertyChangeListeners()).containsExactly(L1);
+        then(brain.getSupport().getPropertyChangeListeners()).containsExactly(L1);
 
         brain.removeProgressListener(L1);
-        then(brain.progressListeners.getPropertyChangeListeners()).isEmpty();
+        then(brain.getSupport().getPropertyChangeListeners()).isEmpty();
     }
 
+    @Test
+    public void get_new_pair_programmer() {
+        final JeddictBrain brain = new JeddictBrain(false);
+
+        for (PairProgrammer.Specialist s: PairProgrammer.Specialist.values()) {
+            final Object pair1 = brain.pairProgrammer(s);
+            final Object pair2 = brain.pairProgrammer(s);
+
+            then(pair1).isNotNull(); then(pair2).isNotNull();
+            if (s == TEST) {
+                then(pair1).isInstanceOf(s.specialistClass);
+                then(pair2).isInstanceOf(s.specialistClass);
+            } else {
+                then(pair1.getClass().getInterfaces()).contains(s.specialistClass);
+                then(pair2.getClass().getInterfaces()).contains(s.specialistClass);
+            }
+            then(pair2).isNotSameAs(pair1);  // create a new pair every call
+        }
+    }
+
+    @Test
+    public void with_and_without_memory() {
+        final JeddictBrain brain = new JeddictBrain(false);
+
+        //
+        // The default is no memory
+        //
+        then(brain.memorySize()).isEqualTo(0);
+
+        then(brain.withMemory(10)).isEqualTo(brain);
+        then(brain.memorySize()).isEqualTo(10);
+
+        thenThrownBy(() -> brain.withMemory(-1))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("size must be greather than 0 (where 0 means no memory)");
+    }
 }

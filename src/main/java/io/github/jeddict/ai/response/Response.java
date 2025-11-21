@@ -34,15 +34,12 @@ public class Response {
     private final Set<FileObject> messageContext;
 
     public Response(String query, String response,  Set<FileObject> messageContext) {
-        if (query == null || query.trim().isEmpty()) {
-            throw new IllegalArgumentException("query can not be null or empty");
-        }
         this.query = query;
         if (response == null || response.isBlank()) {
             response = "";
         }
         if (messageContext == null) {
-            throw new IllegalArgumentException("messageContext can not be null");
+            messageContext = Set.of();
         }
         this.messageContext = messageContext;
 

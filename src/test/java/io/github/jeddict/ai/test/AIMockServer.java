@@ -19,17 +19,14 @@ package io.github.jeddict.ai.test;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
-import java.io.File;
-import java.io.FileWriter;
+import io.github.jeddict.ai.models.DummyChatModel;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.UUID;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -87,41 +84,17 @@ public class AIMockServer {
                 return;
             }
 
-            String error = "";
-
-            String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-
-            //
-            // dump the body for inspection
-            //
-            File bodyFile = File.createTempFile("mockserver-", "-body");
-            try (final FileWriter w = new FileWriter(bodyFile)) {
-                w.append(body);
-            }
-
-            Matcher matcher = MOCK_INSTRUCTION_PATTERN.matcher(body);
-
-            Path mockPath = Path.of(DEFAULT_MOCK_FILE);
-            if (matcher.find()) {
-                String mockFile = matcher.group(1); // Quoted file name
-                if (mockFile == null) {
-                    mockFile = matcher.group(2); // Unquoted file name
-                }
-                mockPath = Path.of("src/test/resources/mocks").resolve(mockFile).normalize();
-            }
-
-            if (!Files.exists(mockPath)) {
-                error = "Mock file '" + mockPath + "' not found.";
-                mockPath = Path.of(ERROR_MOCK_FILE);
-            }
+            final String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
 
             try {
-                String mockContent = Files.readString(mockPath, StandardCharsets.UTF_8);
-                mockContent = mockContent.replaceAll("\\{error\\}", error);
-                String jsonResponse = String.format("{\n  \"id\": \"chatcmpl-%s\",\n  \"object\": \"chat.completion\",\n  \"created\": %d,\n  \"choices\": [{\n    \"index\": 0,\n    \"message\": {\n      \"role\": \"assistant\",\n      \"content\": \"%s\"\n    },\n    \"finish_reason\": \"stop\"\n  }],\n  \"usage\": {\n    \"prompt_tokens\": 9,\n    \"completion_tokens\": 12,\n    \"total_tokens\": 21\n  }\n}",
+                final DummyChatModel model = new DummyChatModel();
+
+                final String response = model.chat(body);
+
+                final String jsonResponse = String.format("{\n  \"id\": \"chatcmpl-%s\",\n  \"object\": \"chat.completion\",\n  \"created\": %d,\n  \"choices\": [{\n    \"index\": 0,\n    \"message\": {\n      \"role\": \"assistant\",\n      \"content\": \"%s\"\n    },\n    \"finish_reason\": \"stop\"\n  }],\n  \"usage\": {\n    \"prompt_tokens\": 9,\n    \"completion_tokens\": 12,\n    \"total_tokens\": 21\n  }\n}",
                         UUID.randomUUID().toString(),
                         System.currentTimeMillis() / 1000,
-                        escapeJson(mockContent)
+                        escapeJson(response)
                 );
 
                 sendResponse(exchange, 200, jsonResponse, "application/json");

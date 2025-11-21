@@ -20,7 +20,6 @@
     },
     "MISTRALapi_key": "",
     "topK": -2147483648,
-    "chatModel": "gpt-4.1",
     "allowCodeExecution": false,
     "assistantAction": "BUILD",
     "maxCompletionTokens": -2147483648,
@@ -129,12 +128,10 @@
     "presencePenalty": 4.9E-324,
     "aiAssistantActivated": true,
     "classContextInlineHint": "CURRENT_CLASS",
-    "provider": "CUSTOM_OPEN_AI",
     "stream": true,
     "temperature": 1,
     "dailyInputTokenStats": { },
     "CUSTOM_OPEN_AIapi_key": "custom_open_api_key",
-    "nb-log-manager-projectRules": "",
     "ANTHROPICapi_key": "anthropic_api_key",
     "customHeaders": {},
     "excludeJavadoc": false,
@@ -145,5 +142,9 @@
     "varContext": "CURRENT_CLASS",
     "chatPlacement": "Right",
     "PERPLEXITYapi_key": "perplexity_key",
-    "enableInlineHint": false
+    "enableInlineHint": false,
+    "provider": "DUMMY",
+    "Dummyprovider_location": "",
+    "Dummyapi_kry": "dummykey",
+    "chatModel": "dummy"
 }

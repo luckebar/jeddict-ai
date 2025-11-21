@@ -30,19 +30,19 @@ import org.json.JSONObject;
  */
 public class FilePreferences {
 
-    private final Path PREFS_PATH;
+    public final Path preferencesPath;
 
     private JSONObject data;
 
-    public FilePreferences() {
-        PREFS_PATH = Paths.get(System.getProperty("user.home"), "jeddict.json");
+    public FilePreferences(Path preferencesPath) {
+        this.preferencesPath = preferencesPath;
         load();
     }
 
     private void load() {
         try {
-            if (Files.exists(PREFS_PATH)) {
-                String content = Files.readString(PREFS_PATH);
+            if (Files.exists(preferencesPath)) {
+                String content = Files.readString(preferencesPath);
                 data = new JSONObject(content);
             } else {
                 data = new JSONObject();
@@ -54,8 +54,8 @@ public class FilePreferences {
 
     public void save() {
         try {
-            Files.createDirectories(PREFS_PATH.getParent());
-            Files.writeString(PREFS_PATH, data.toString(2));
+            Files.createDirectories(preferencesPath.getParent());
+            Files.writeString(preferencesPath, data.toString(2));
         } catch (IOException e) {
             throw new RuntimeException("Failed to save preferences", e);
         }

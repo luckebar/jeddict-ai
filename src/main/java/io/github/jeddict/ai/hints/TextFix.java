@@ -20,8 +20,9 @@ import com.sun.source.tree.Tree;
 import static com.sun.source.tree.Tree.Kind.STRING_LITERAL;
 import com.sun.source.util.TreePath;
 import io.github.jeddict.ai.JeddictUpdateManager;
+import io.github.jeddict.ai.agent.pair.PairProgrammer;
+import io.github.jeddict.ai.agent.pair.Shakespeare;
 import io.github.jeddict.ai.completion.Action;
-import io.github.jeddict.ai.lang.JeddictBrain;
 import org.netbeans.api.java.source.JavaSource;
 import org.netbeans.api.java.source.TreePathHandle;
 import org.netbeans.api.java.source.WorkingCopy;
@@ -32,15 +33,10 @@ import org.openide.util.NbBundle;
  *
  * @author Shiwani Gupta
  */
-public class TextFix extends JavaFix {
+public class TextFix extends TreePathAIFix {
 
-    private final TreePath treePath;
-    private final Action action;
-
-    public TextFix(TreePathHandle tpHandle, Action action, TreePath treePath) {
-        super(tpHandle);
-        this.treePath = treePath;
-        this.action = action;
+    public TextFix(final TreePathHandle treePathHandle, final Action action, final TreePath treePath) {
+        super(treePathHandle, action, treePath);
     }
 
     @Override
@@ -63,11 +59,16 @@ public class TextFix extends JavaFix {
         if (leaf.getKind() != STRING_LITERAL) {
             return;
         }
+
+        final Shakespeare pair = newJeddictBrain().pairProgrammer(PairProgrammer.Specialist.SHAKESPEARE);
+
         String content;
         if (action == Action.ENHANCE) {
-            content = new JeddictBrain().enhanceText(treePath.getLeaf().toString(), treePath.getCompilationUnit().toString());
+            content =
+                pair.enhanceText(treePath.getLeaf().toString(), treePath.getCompilationUnit().toString());
         } else {
-            content = new JeddictBrain().fixGrammar(treePath.getLeaf().toString(), treePath.getCompilationUnit().toString());
+            content =
+                pair.fixGrammar(treePath.getLeaf().toString(), treePath.getCompilationUnit().toString());
         }
         if (content != null && content.length() > 1 && content.startsWith("\"") && content.endsWith("\"")) {
             content = content.substring(1, content.length() - 1);

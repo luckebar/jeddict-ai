@@ -26,33 +26,32 @@ import com.sun.source.tree.VariableTree;
 import com.sun.source.util.TreePath;
 import com.sun.source.util.TreeScanner;
 import io.github.jeddict.ai.JeddictUpdateManager;
+import io.github.jeddict.ai.agent.pair.PairProgrammer;
 import io.github.jeddict.ai.completion.Action;
-import io.github.jeddict.ai.lang.JeddictBrain;
 import java.util.List;
 import java.util.stream.Collectors;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.Name;
 import javax.lang.model.element.VariableElement;
+import org.apache.commons.lang3.StringUtils;
 import org.netbeans.api.java.source.JavaSource;
 import org.netbeans.api.java.source.TreeMaker;
 import org.netbeans.api.java.source.TreePathHandle;
 import org.netbeans.api.java.source.WorkingCopy;
+import org.netbeans.api.project.FileOwnerQuery;
+import org.netbeans.api.project.Project;
 import org.netbeans.spi.java.hints.JavaFix;
 import org.openide.util.NbBundle;
+import io.github.jeddict.ai.agent.pair.RefactorSpecialist;
 
 /**
  *
  * @author Shiwani Gupta
  */
-public class VariableNameFix extends JavaFix {
+public class VariableNameFix extends TreePathAIFix {
 
-    private final TreePath treePath;
-    private final Action action;
-
-    public VariableNameFix(TreePathHandle tpHandle, Action action, TreePath treePath) {
-        super(tpHandle);
-        this.treePath = treePath;
-        this.action = action;
+    public VariableNameFix(final TreePathHandle treePathHandle, final Action action, final TreePath treePath) {
+        super(treePathHandle, action, treePath);
     }
 
     @Override
@@ -66,30 +65,36 @@ public class VariableNameFix extends JavaFix {
         if (copy.toPhase(JavaSource.Phase.RESOLVED).compareTo(JavaSource.Phase.RESOLVED) < 0) {
             return;
         }
-
         TreePath path = tc.getPath();
         Tree leaf = path.getLeaf();
         Element elm = copy.getTrees().getElement(path);
-
         if (elm instanceof VariableElement) {
-            String oldName = elm.toString();
-            String newName = new JeddictBrain().enhanceVariableName(
-                    oldName,
-                    path.getParentPath().getLeaf().toString(),
-                    copy.getCompilationUnit().toString()
+            final RefactorSpecialist pair = newJeddictBrain().pairProgrammer(PairProgrammer.Specialist.REFACTOR);
+            final Project project = FileOwnerQuery.getOwner(copy.getFileObject());
+            final String classSource = copy.getCompilationUnit().toString();
+            final String methodSource = treePath.getParentPath().getLeaf().toString();
+            final String oldName = elm.toString();
+
+            LOG.finest(() -> "oldName: " + oldName
+                    + "\nmethodSource: " + StringUtils.abbreviate(methodSource, 80)
+                    + "\nclassSource: " + StringUtils.abbreviate(classSource, 80)
+                    + "\nglobalRules: " + globalRules()
+                    + "\nprohectRules: " + projectRules(project));
+
+            final String newName = pair.enhanceVariableName(
+                oldName, methodSource, classSource,
+                globalRules(), projectRules(project)
             );
 
             if (leaf.getKind() == Tree.Kind.VARIABLE) {
                 VariableTree oldVarTree = (VariableTree) leaf;
                 TreeMaker maker = copy.getTreeMaker();
-
                 VariableTree newVarTree = maker.Variable(
                         oldVarTree.getModifiers(),
                         newName,
                         oldVarTree.getType(),
                         oldVarTree.getInitializer()
                 );
-
                 handleLocalVariable(copy, path, oldVarTree, newVarTree);
                 handleMethodParameter(copy, path, oldVarTree, newVarTree, oldName, newName);
                 handleClassField(copy, path, oldVarTree, newVarTree, oldName, newName);
@@ -99,8 +104,7 @@ public class VariableNameFix extends JavaFix {
 
     private void handleLocalVariable(WorkingCopy copy, TreePath path, VariableTree oldVarTree, VariableTree newVarTree) {
         Tree parent = path.getParentPath().getLeaf();
-        if (parent instanceof BlockTree) {
-            BlockTree blockTree = (BlockTree) parent;
+        if (parent instanceof BlockTree blockTree) {
             List<? extends StatementTree> statements = blockTree.getStatements();
             List<StatementTree> newStatements = statements.stream()
                     .map(s -> s.equals(oldVarTree) ? newVarTree : s)
@@ -114,8 +118,7 @@ public class VariableNameFix extends JavaFix {
 
     private void handleMethodParameter(WorkingCopy copy, TreePath path, VariableTree oldVarTree, VariableTree newVarTree, String oldName, String newName) {
         Tree parent = path.getParentPath().getLeaf();
-        if (parent instanceof MethodTree) {
-            MethodTree methodTree = (MethodTree) parent;
+        if (parent instanceof MethodTree methodTree) {
             List<? extends VariableTree> newParams = methodTree.getParameters().stream()
                     .map(p -> p.equals(oldVarTree) ? newVarTree : p)
                     .collect(Collectors.toList());
@@ -141,8 +144,7 @@ public class VariableNameFix extends JavaFix {
 
     private void handleClassField(WorkingCopy copy, TreePath path, VariableTree oldVarTree, VariableTree newVarTree, String oldName, String newName) {
         Tree parent = path.getParentPath().getLeaf();
-        if (parent instanceof ClassTree) {
-            ClassTree classTree = (ClassTree) parent;
+        if (parent instanceof ClassTree classTree) {
 
             // Update class fields
             List<? extends Tree> members = classTree.getMembers();

@@ -31,6 +31,7 @@ import static io.github.jeddict.ai.util.ColorUtil.darken;
 import static io.github.jeddict.ai.util.ColorUtil.lighten;
 import static io.github.jeddict.ai.util.EditorUtil.getBackgroundColorFromMimeType;
 import static io.github.jeddict.ai.util.EditorUtil.getTextColorFromMimeType;
+import io.github.jeddict.ai.util.FileUtil;
 import static io.github.jeddict.ai.util.MimeUtil.MIME_PLAIN_TEXT;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -40,7 +41,6 @@ import java.awt.Desktop;
 import java.awt.Dialog;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
-import java.awt.Frame;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -48,7 +48,10 @@ import java.awt.Point;
 import java.awt.Window;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.File;
+import java.io.IOException;
 import java.net.URI;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -80,6 +83,7 @@ import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableColumnModel;
 import javax.swing.table.TableRowSorter;
 import org.apache.commons.lang3.StringUtils;
+import org.openide.util.Exceptions;
 import org.openide.util.Lookup;
 import org.openide.util.NbBundle;
 
@@ -145,13 +149,16 @@ final class AIAssistancePanel extends javax.swing.JPanel {
         manageModelsButton = new javax.swing.JButton();
         modelHelp = new javax.swing.JLabel();
         activationParentPane = new javax.swing.JPanel();
-        activationPanel = new javax.swing.JPanel();
+        activationPane = new javax.swing.JPanel();
         optionsLabel = new javax.swing.JLabel();
         aiAssistantActivationCheckBox = new javax.swing.JCheckBox();
         enableSmartCodeCheckBox = new javax.swing.JCheckBox();
         enableInlinePromptHintCheckBox = new javax.swing.JCheckBox();
         enableInlineHintCheckBox = new javax.swing.JCheckBox();
         enableHintsCheckBox = new javax.swing.JCheckBox();
+        configPathPane = new javax.swing.JPanel();
+        configPathLabel = new javax.swing.JLabel();
+        configPathBtn = new javax.swing.JLabel();
         providerSettingsPane = new javax.swing.JLayeredPane();
         providerSettingsChildPane = new javax.swing.JPanel();
         providerSettingsParentPane1 = new javax.swing.JPanel();
@@ -477,8 +484,10 @@ final class AIAssistancePanel extends javax.swing.JPanel {
         activationParentPane.setMaximumSize(new java.awt.Dimension(32767, 32797));
         activationParentPane.setLayout(new javax.swing.BoxLayout(activationParentPane, javax.swing.BoxLayout.Y_AXIS));
 
-        activationPanel.setAlignmentY(0.0F);
-        activationPanel.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
+        activationPane.setAlignmentY(0.0F);
+        activationPane.setPreferredSize(new java.awt.Dimension(32767, 32767));
+        activationPane.setRequestFocusEnabled(false);
+        activationPane.setLayout(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT));
 
         optionsLabel.setHorizontalAlignment(javax.swing.SwingConstants.LEFT);
         org.openide.awt.Mnemonics.setLocalizedText(optionsLabel, "Options");
@@ -486,7 +495,7 @@ final class AIAssistancePanel extends javax.swing.JPanel {
         optionsLabel.setAlignmentY(0.0F);
         optionsLabel.setMaximumSize(new java.awt.Dimension(32767, 30));
         optionsLabel.setPreferredSize(new java.awt.Dimension(32767, 30));
-        activationPanel.add(optionsLabel);
+        activationPane.add(optionsLabel);
 
         org.openide.awt.Mnemonics.setLocalizedText(aiAssistantActivationCheckBox, org.openide.util.NbBundle.getMessage(AIAssistancePanel.class, "AIAssistancePanel.aiAssistantActivationCheckBox.text")); // NOI18N
         aiAssistantActivationCheckBox.setToolTipText(org.openide.util.NbBundle.getMessage(AIAssistancePanel.class, "AIAssistancePanel.aiAssistantActivationCheckBox.toolTipText")); // NOI18N
@@ -495,15 +504,15 @@ final class AIAssistancePanel extends javax.swing.JPanel {
                 aiAssistantActivationCheckBoxActionPerformed(evt);
             }
         });
-        activationPanel.add(aiAssistantActivationCheckBox);
+        activationPane.add(aiAssistantActivationCheckBox);
 
         org.openide.awt.Mnemonics.setLocalizedText(enableSmartCodeCheckBox, org.openide.util.NbBundle.getMessage(AIAssistancePanel.class, "AIAssistancePanel.enableSmartCodeCheckBox.text")); // NOI18N
         enableSmartCodeCheckBox.setToolTipText(org.openide.util.NbBundle.getMessage(AIAssistancePanel.class, "AIAssistancePanel.enableSmartCodeCheckBox.toolTipText")); // NOI18N
-        activationPanel.add(enableSmartCodeCheckBox);
+        activationPane.add(enableSmartCodeCheckBox);
 
         org.openide.awt.Mnemonics.setLocalizedText(enableInlinePromptHintCheckBox, org.openide.util.NbBundle.getMessage(AIAssistancePanel.class, "AIAssistancePanel.enableInlinePromptHintCheckBox.text")); // NOI18N
         enableInlinePromptHintCheckBox.setToolTipText(org.openide.util.NbBundle.getMessage(AIAssistancePanel.class, "AIAssistancePanel.enableInlinePromptHintCheckBox.toolTipText")); // NOI18N
-        activationPanel.add(enableInlinePromptHintCheckBox);
+        activationPane.add(enableInlinePromptHintCheckBox);
 
         org.openide.awt.Mnemonics.setLocalizedText(enableInlineHintCheckBox, org.openide.util.NbBundle.getMessage(AIAssistancePanel.class, "AIAssistancePanel.enableInlineHintCheckBox.text")); // NOI18N
         enableInlineHintCheckBox.setToolTipText(org.openide.util.NbBundle.getMessage(AIAssistancePanel.class, "AIAssistancePanel.enableInlineHintCheckBox.toolTipText")); // NOI18N
@@ -512,7 +521,7 @@ final class AIAssistancePanel extends javax.swing.JPanel {
                 enableInlineHintCheckBoxActionPerformed(evt);
             }
         });
-        activationPanel.add(enableInlineHintCheckBox);
+        activationPane.add(enableInlineHintCheckBox);
 
         org.openide.awt.Mnemonics.setLocalizedText(enableHintsCheckBox, org.openide.util.NbBundle.getMessage(AIAssistancePanel.class, "AIAssistancePanel.enableHintsCheckBox.text")); // NOI18N
         enableHintsCheckBox.setToolTipText(org.openide.util.NbBundle.getMessage(AIAssistancePanel.class, "AIAssistancePanel.enableHintsCheckBox.toolTipText")); // NOI18N
@@ -521,9 +530,40 @@ final class AIAssistancePanel extends javax.swing.JPanel {
                 enableHintsCheckBoxActionPerformed(evt);
             }
         });
-        activationPanel.add(enableHintsCheckBox);
+        activationPane.add(enableHintsCheckBox);
 
-        activationParentPane.add(activationPanel);
+        activationParentPane.add(activationPane);
+
+        configPathPane.setBorder(javax.swing.BorderFactory.createLineBorder(new java.awt.Color(204, 204, 204)));
+        configPathPane.setForeground(new java.awt.Color(204, 204, 204));
+
+        org.openide.awt.Mnemonics.setLocalizedText(configPathLabel, org.openide.util.NbBundle.getMessage(AIAssistancePanel.class, "AIAssistancePanel.configPathLabel.text")); // NOI18N
+        configPathLabel.setHorizontalTextPosition(javax.swing.SwingConstants.RIGHT);
+
+        org.openide.awt.Mnemonics.setLocalizedText(configPathBtn, org.openide.util.NbBundle.getMessage(AIAssistancePanel.class, "AIAssistancePanel.configPathBtn.text")); // NOI18N
+
+        javax.swing.GroupLayout configPathPaneLayout = new javax.swing.GroupLayout(configPathPane);
+        configPathPane.setLayout(configPathPaneLayout);
+        configPathPaneLayout.setHorizontalGroup(
+            configPathPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, configPathPaneLayout.createSequentialGroup()
+                .addContainerGap(549, Short.MAX_VALUE)
+                .addComponent(configPathLabel)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(configPathBtn, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap())
+        );
+        configPathPaneLayout.setVerticalGroup(
+            configPathPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(configPathPaneLayout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(configPathPaneLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(configPathLabel)
+                    .addComponent(configPathBtn, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
+
+        activationParentPane.add(configPathPane);
 
         providersPane.add(activationParentPane);
 
@@ -1199,6 +1239,17 @@ final class AIAssistancePanel extends javax.swing.JPanel {
             topKPane.setVisible(true);
             seedPane.setVisible(true);
         }
+
+        final Path configPath = FileUtil.getConfigPath();
+        final String configPathText = configPath.toAbsolutePath().toString();
+        configPathBtn.setText("<html><a href=\"\">%s</a></html>".formatted(configPathText));
+        configPathBtn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        configPathBtn.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                launchExplorer(configPath.toFile());
+            }
+        });
     }
     private void classContextInlineHintComboBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_classContextInlineHintComboBoxActionPerformed
         // TODO add your handling code here:
@@ -1446,12 +1497,12 @@ final class AIAssistancePanel extends javax.swing.JPanel {
     private List<String> getModelList(GenAIProvider selectedProvider) {
         // TODO Sostituire con la ripresa dal file json
         List<String> models = null;
-        
+
         Set<String> genAIModels = preferencesManager.getGenAIModelMap(selectedProvider.name()).keySet();
-        
+
         if(genAIModels != null && genAIModels.size() > 0)
             models = new ArrayList<>(genAIModels);
-        
+
         if (models == null) {
             models = MODELS.values().stream()
                 .filter(model -> model.getProvider().equals(selectedProvider))
@@ -1537,6 +1588,80 @@ final class AIAssistancePanel extends javax.swing.JPanel {
         return models;
     }
 
+    public LinkedHashMap<String, GenAIModel> getModelsByProvider(Map<String, GenAIModel> models, String provider) {
+        LinkedHashMap<String, GenAIModel> filteredModels = new LinkedHashMap<>(); // Modifica qui
+        for (Map.Entry<String, GenAIModel> entry : models.entrySet()) {
+            GenAIModel model = entry.getValue();
+            if (model.getProvider().name().equals(provider)) {
+                filteredModels.put(entry.getKey(), model);
+            }
+        }
+        return filteredModels;
+    }
+
+    private LinkedHashMap<String, GenAIModel> getModelListTable(GenAIProvider selectedProvider) {
+        // TODO Sostituire con la ripresa dal file json
+        final LinkedHashMap<String, GenAIModel> models = new LinkedHashMap<>();
+        if (selectedProvider == GenAIProvider.OLLAMA
+                && !providerLocationField.getText().isEmpty()) {
+            OllamaModelFetcher fetcher = new OllamaModelFetcher();
+            List<String> strModels = fetcher.fetchModelNames(providerLocationField.getText());
+            strModels.forEach((model) -> {
+                models.put(model, new GenAIModel(selectedProvider, model, model, 0, 0));
+            });
+            // Aggiunge tutti i MODELS esistenti alla lista
+            models.putAll(getModelsByProvider(MODELS,selectedProvider.name()));
+        } else if (selectedProvider == GenAIProvider.LM_STUDIO
+                && !providerLocationField.getText().isEmpty()) {
+            LMStudioModelFetcher fetcher = new LMStudioModelFetcher();
+            List<String> strModels = fetcher.fetchModelNames(providerLocationField.getText());
+            strModels.forEach((model) -> {
+                models.put(model, new GenAIModel(selectedProvider, model, model, 0, 0));
+            });
+            // Aggiunge tutti i MODELS esistenti alla lista
+            models.putAll(getModelsByProvider(MODELS,selectedProvider.name()));
+        } else if (selectedProvider == GenAIProvider.GPT4ALL
+                && !providerLocationField.getText().isEmpty()) {
+            GPT4AllModelFetcher fetcher = new GPT4AllModelFetcher();
+            models.putAll(fetcher.fetchGenAIModels(providerLocationField.getText()));
+            models.putAll(getModelsByProvider(MODELS,selectedProvider.name()));
+        } else if (selectedProvider == GenAIProvider.COPILOT_PROXY) {
+            GPT4AllModelFetcher fetcher = new GPT4AllModelFetcher();
+            models.putAll(fetcher.fetchGenAIModels(DEFAULT_COPILOT_PROVIDER_LOCATION));
+            models.putAll(getModelsByProvider(MODELS,selectedProvider.name()));
+        } else if (selectedProvider == GenAIProvider.GROQ
+                && !providerLocationField.getText().isEmpty()) {
+            GroqModelFetcher fetcher = new GroqModelFetcher();
+            List<String> strModels = fetcher.fetchModels(providerLocationField.getText(), new String(apiKeyField.getPassword()));
+            strModels.forEach((model) -> {
+                models.put(model, new GenAIModel(selectedProvider, model, model, 0, 0));
+            });
+            // Aggiunge tutti i MODELS esistenti alla lista
+            models.putAll(getModelsByProvider(MODELS,selectedProvider.name()));
+        } else if (selectedProvider == GenAIProvider.CUSTOM_OPEN_AI) {
+            OpenAIModelFetcher fetcher = new OpenAIModelFetcher();
+            LinkedHashMap<String, GenAIModel> apiModels = fetcher.fetchGenAIModels(providerLocationField.getText());
+            // Prima aggiungi i modelli predefiniti
+            models.putAll(getModelsByProvider(MODELS, selectedProvider.name()));
+
+            // Poi aggiungi i modelli dall'API (che sovrascrivono i duplicati)
+            models.putAll(apiModels);
+        }
+
+        if (models.isEmpty()) {
+            models.putAll(getModelsByProvider(MODELS,selectedProvider.name()));
+        }
+
+        // Ordina la mappa alfabeticamente per chiave
+        /*
+        Map<String, GenAIModel> sortedModels = new LinkedHashMap<>();
+        models.entrySet().stream()
+            .sorted(Map.Entry.comparingByKey())
+            .forEachOrdered(entry -> sortedModels.put(entry.getKey(), entry.getValue()));*/
+
+        return models;
+    }
+
     private GenAIModel getModel(String modelName) {
         return preferencesManager.getGenAIModelByName(((GenAIProvider) providerComboBox.getSelectedItem()).name(),modelName);
         //return MODELS.get(modelName);
@@ -1616,7 +1741,7 @@ final class AIAssistancePanel extends javax.swing.JPanel {
         providerComboBox.setSelectedItem(preferencesManager.getProvider());
         GenAIProvider selectedProvider = (GenAIProvider) providerComboBox.getSelectedItem();
         if (selectedProvider == GenAIProvider.CUSTOM_OPEN_AI) {
-            
+
             Set<String> loadedModels = preferencesManager.getGenAIModelMap(preferencesManager.getProvider().name()).keySet();
             /*
             OpenAIModelFetcher fetcher = new OpenAIModelFetcher();
@@ -1628,7 +1753,7 @@ final class AIAssistancePanel extends javax.swing.JPanel {
                 modelComboBox.addItem(model);
         }
         modelComboBox.setSelectedItem(preferencesManager.getModel());
-        
+
         ctrlSpaceRadioButton.setSelected(!preferencesManager.isCompletionAllQueryType());
         ctrlAltSpaceRadioButton.setSelected(preferencesManager.isCompletionAllQueryType());
         showDescriptionCheckBox.setSelected(preferencesManager.isDescriptionEnabled());
@@ -2531,6 +2656,435 @@ final class AIAssistancePanel extends javax.swing.JPanel {
         modelsPopupMenu.add(clearModelsItem);
     }
 
+    /**
+    * Adds a new model to the combobox
+    * @param modelName The name of the model to add
+    */
+    private void addModelToComboBox(String modelName) {
+       if (modelName != null && !modelName.trim().isEmpty()) {
+           // Controlla se il modello esiste già
+           boolean exists = false;
+           for (int i = 0; i < modelComboBox.getItemCount(); i++) {
+               if (modelComboBox.getItemAt(i).equals(modelName)) {
+                   exists = true;
+                   break;
+               }
+           }
+
+           if (!exists) {
+               modelComboBox.addItem(modelName);
+           }
+       }
+    }
+
+    /**
+    * Removes a model from the combobox
+    * @param modelName The name of the model to remove
+    */
+    private void removeModelFromComboBox(String modelName) {
+       if (modelName != null && !modelName.trim().isEmpty()) {
+           modelComboBox.removeItem(modelName);
+       }
+    }
+
+    /**
+     * Sorts the items in the combobox alphabetically
+     */
+    private void sortModelComboBox() {
+       List<String> items = new ArrayList<>();
+       for (int i = 0; i < modelComboBox.getItemCount(); i++) {
+           items.add((String) modelComboBox.getItemAt(i));
+       }
+
+       Collections.sort(items);
+       modelComboBox.removeAllItems();
+
+       for (String item : items) {
+           modelComboBox.addItem(item);
+       }
+    }
+
+    /**
+     * Clears all models from the combobox
+     */
+    private void clearModelComboBox() {
+       modelComboBox.removeAllItems();
+    }
+
+    /**
+     * Adds a context menu to manage models
+     */
+    private void addModelManagementContextMenu() {
+
+        // Rinomina il menu esistente per specificare l'inserimento manuale
+        JMenuItem addModelManuallyItem = new JMenuItem("Add model manually");
+        addModelManuallyItem.addActionListener(e -> {
+            // Crea un dialog personalizzato per inserire tutti i dati del modello
+            //JDialog modelDialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Add Custom Model", true);
+            Window parent = SwingUtilities.getWindowAncestor(this);
+            JDialog modelDialog = new JDialog(parent, "Add Custom Model", Dialog.ModalityType.APPLICATION_MODAL);
+            modelDialog.setLayout(new BorderLayout());
+            modelDialog.setSize(500, 400);
+            modelDialog.setLocationRelativeTo(this);
+
+            JPanel mainPanel = new JPanel(new GridBagLayout());
+            GridBagConstraints gbc = new GridBagConstraints();
+            gbc.insets = new Insets(5, 5, 5, 5);
+            gbc.fill = GridBagConstraints.HORIZONTAL;
+            gbc.anchor = GridBagConstraints.WEST;
+
+            // Provider selection
+            gbc.gridx = 0; gbc.gridy = 0;
+            mainPanel.add(new JLabel("Provider:"), gbc);
+            gbc.gridx = 1;
+            JComboBox<GenAIProvider> providerCombo = new JComboBox<>(GenAIProvider.values());
+            mainPanel.add(providerCombo, gbc);
+
+            // Model name
+            gbc.gridx = 0; gbc.gridy = 1;
+            mainPanel.add(new JLabel("Model Name:"), gbc);
+            gbc.gridx = 1;
+            JTextField modelNameField = new JTextField(20);
+            mainPanel.add(modelNameField, gbc);
+
+            // Description
+            gbc.gridx = 0; gbc.gridy = 2;
+            mainPanel.add(new JLabel("Description:"), gbc);
+            gbc.gridx = 1;
+            JTextArea descriptionArea = new JTextArea(3, 20);
+            descriptionArea.setLineWrap(true);
+            descriptionArea.setWrapStyleWord(true);
+            JScrollPane descriptionScroll = new JScrollPane(descriptionArea);
+            mainPanel.add(descriptionScroll, gbc);
+
+            // Input price
+            gbc.gridx = 0; gbc.gridy = 3;
+            mainPanel.add(new JLabel("Input Price:"), gbc);
+            gbc.gridx = 1;
+            JTextField inputPriceField = new JTextField(10);
+            mainPanel.add(inputPriceField, gbc);
+
+            // Output price
+            gbc.gridx = 0; gbc.gridy = 4;
+            mainPanel.add(new JLabel("Output Price:"), gbc);
+            gbc.gridx = 1;
+            JTextField outputPriceField = new JTextField(10);
+            mainPanel.add(outputPriceField, gbc);
+
+            // Button panel
+            gbc.gridx = 0; gbc.gridy = 5;
+            gbc.gridwidth = 2;
+            gbc.fill = GridBagConstraints.CENTER;
+            JPanel buttonPanel = new JPanel();
+            JButton okButton = new JButton("OK");
+            JButton cancelButton = new JButton("Cancel");
+            buttonPanel.add(okButton);
+            buttonPanel.add(cancelButton);
+            mainPanel.add(buttonPanel, gbc);
+
+            modelDialog.add(mainPanel, BorderLayout.CENTER);
+
+            // Action listeners
+            okButton.addActionListener(ev -> {
+                try {
+                    String modelName = modelNameField.getText().trim();
+                    String description = descriptionArea.getText().trim();
+                    double inputPrice = Double.parseDouble(inputPriceField.getText());
+                    double outputPrice = Double.parseDouble(outputPriceField.getText());
+                    GenAIProvider provider = (GenAIProvider) providerCombo.getSelectedItem();
+
+                    if (modelName.isEmpty() || description.isEmpty()) {
+                        JOptionPane.showMessageDialog(modelDialog,
+                            "Model name and description cannot be empty",
+                            "Error", JOptionPane.ERROR_MESSAGE);
+                        return;
+                    }
+
+                    // Crea il nuovo modello e aggiungilo alla mappa MODELS
+                    GenAIModel newModel = new GenAIModel(provider, modelName, description, inputPrice, outputPrice);
+                    //MODELS.put(modelName, newModel);
+
+                    List<GenAIModel> genAiModels = preferencesManager.getGenAIModelList(provider.name());
+                    boolean alreadyExists = genAiModels.stream()
+                        .anyMatch(model -> model.getName().equalsIgnoreCase(modelName));
+
+                    if(!alreadyExists) {
+                        genAiModels.add(newModel);
+                        preferencesManager.setGenAIModelList(genAiModels, provider.name());
+                        // Aggiungi il modello al combobox
+                        addModelToComboBox(modelName);
+                    }
+                    modelDialog.dispose();
+
+                } catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(modelDialog,
+                        "Please enter valid numeric values for prices",
+                        "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            });
+
+            cancelButton.addActionListener(ev -> modelDialog.dispose());
+
+            modelDialog.setVisible(true);
+        });
+
+        // Aggiungi nuovo menu per scaricare modelli da remoto
+        JMenuItem downloadModelsItem = new JMenuItem("Add models from remote");
+        downloadModelsItem.addActionListener(e -> {
+            // Creare una mappa predefinita di modelli disponibili
+            LinkedHashMap<String, GenAIModel> availableModels = getModelListTable((GenAIProvider)providerComboBox.getSelectedItem());
+
+            // Creare il dialog
+            //JDialog modelSelectionDialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Select Models to Add", true);
+            Window parent = SwingUtilities.getWindowAncestor(this);
+            JDialog modelSelectionDialog = new JDialog(parent, "Select Models to Add", Dialog.ModalityType.APPLICATION_MODAL);
+            modelSelectionDialog.setLayout(new BorderLayout());
+            modelSelectionDialog.setSize(800, 600);
+            modelSelectionDialog.setLocationRelativeTo(this);
+
+            // Creare il modello della tabella
+            String[] columnNames = {"Select", "Name", "Description", "Input Price/M", "Output Price/M"};
+            DefaultTableModel tableModel = new DefaultTableModel(columnNames, 0) {
+                @Override
+                public Class<?> getColumnClass(int columnIndex) {
+                    if (columnIndex == 0) return Boolean.class;
+                    if (columnIndex == 3 || columnIndex == 4) return Double.class;
+                    return String.class;
+                }
+
+                @Override
+                public boolean isCellEditable(int row, int column) {
+                    return column == 0; // Solo la colonna di selezione è editabile
+                }
+            };
+
+            // Popolare la tabella con i modelli disponibili
+            for (GenAIModel model : availableModels.values()) {
+                // Verificare se il modello è già presente nella combobox
+                boolean alreadyInComboBox = false;
+                for (int i = 0; i < modelComboBox.getItemCount(); i++) {
+                    if (modelComboBox.getItemAt(i).equals(model.getName())) {
+                        alreadyInComboBox = true;
+                        break;
+                    }
+                }
+
+                // Aggiungere alla tabella con selezione predefinita se non è già presente
+                tableModel.addRow(new Object[]{
+                    alreadyInComboBox, // Selezionare solo i modelli presenti
+                    model.getName(),
+                    model.getDescription(),
+                    model.getInputPrice()*1000000,
+                    model.getOutputPrice()*1000000
+                });
+            }
+
+            // Creazione della JTable con tooltip personalizzato
+            JTable modelsTable = new JTable(tableModel) {
+                @Override
+                public String getToolTipText(MouseEvent e) {
+                    Point p = e.getPoint();
+                    int row = rowAtPoint(p);
+                    int col = columnAtPoint(p);
+
+                    if (row >= 0 && col >= 0) {
+                        if (col == 2) { // Descrizione
+                            Object value = getValueAt(row, col);
+                            return (value != null) ? value.toString() : null;
+                        }
+                    }
+                    return super.getToolTipText(e);
+                }
+
+                @Override
+                public Point getToolTipLocation(MouseEvent e) {
+                    return new Point(20, -20);
+                }
+            };
+
+            // AGGIUNTA DELL'ORDINAMENTO PER LE COLONNE
+            TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(tableModel);
+            modelsTable.setRowSorter(sorter);
+
+            // Comparatore per le colonne numeriche (prezzi)
+            sorter.setComparator(3, Comparator.comparingDouble(value -> (Double) value));
+            sorter.setComparator(4, Comparator.comparingDouble(value -> (Double) value));
+
+
+            modelsTable.setPreferredScrollableViewportSize(new Dimension(750, 400));
+            modelsTable.setFillsViewportHeight(true);
+            modelsTable.setAutoCreateRowSorter(true);
+
+
+            // Impostare la larghezza delle colonne
+            modelsTable.getColumnModel().getColumn(0).setPreferredWidth(50);
+            modelsTable.getColumnModel().getColumn(1).setPreferredWidth(150);
+            modelsTable.getColumnModel().getColumn(2).setPreferredWidth(350);
+            modelsTable.getColumnModel().getColumn(3).setPreferredWidth(80);
+            modelsTable.getColumnModel().getColumn(4).setPreferredWidth(80);
+
+            JScrollPane scrollPane = new JScrollPane(modelsTable);
+
+            // Pannello per i pulsanti
+            JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+            JButton selectAllButton = new JButton("Select All");
+            JButton deselectAllButton = new JButton("Deselect All");
+            JButton addSelectedButton = new JButton("Add Selected Models");
+            JButton cancelButton = new JButton("Cancel");
+
+            buttonPanel.add(selectAllButton);
+            buttonPanel.add(deselectAllButton);
+            buttonPanel.add(addSelectedButton);
+            buttonPanel.add(cancelButton);
+
+            // Aggiungere i componenti al dialog
+            modelSelectionDialog.add(scrollPane, BorderLayout.CENTER);
+            modelSelectionDialog.add(buttonPanel, BorderLayout.SOUTH);
+
+            // Gestire gli eventi dei pulsanti
+            selectAllButton.addActionListener(ev -> {
+                for (int i = 0; i < tableModel.getRowCount(); i++) {
+                    tableModel.setValueAt(true, i, 0);
+                }
+            });
+
+            deselectAllButton.addActionListener(ev -> {
+                for (int i = 0; i < tableModel.getRowCount(); i++) {
+                    tableModel.setValueAt(false, i, 0);
+                }
+            });
+
+            addSelectedButton.addActionListener(ev -> {
+                List<GenAIModel> selectedModels = new ArrayList<>();
+                Map<String, List<GenAIModel>> modelsByProvider = new HashMap<>();
+
+                for (int i = 0; i < tableModel.getRowCount(); i++) {
+                    Boolean selected = (Boolean) tableModel.getValueAt(i, 0);
+                    if (selected != null && selected) {
+                        String modelName = (String) tableModel.getValueAt(i, 1);
+                        GenAIModel model = availableModels.get(modelName);
+                        if (model != null) {
+                            selectedModels.add(model);
+
+                            // Raggruppare per provider
+                            String providerName = model.getProvider().name();
+                            modelsByProvider.computeIfAbsent(providerName, k -> new ArrayList<>()).add(model);
+                        }
+                    }
+                }
+
+                if (selectedModels.isEmpty()) {
+                    JOptionPane.showMessageDialog(modelSelectionDialog,
+                        "Please select at least one model to add.",
+                        "No Selection", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+
+                // Salvare i modelli per ogni provider
+                for (Map.Entry<String, List<GenAIModel>> entry : modelsByProvider.entrySet()) {
+                    List<GenAIModel> existingModels = preferencesManager.getGenAIModelList(entry.getKey());
+                    if (existingModels == null) {
+                        existingModels = new ArrayList<>();
+                    }
+
+                    // Aggiungere solo i modelli non già presenti
+                    for (GenAIModel newModel : entry.getValue()) {
+                        boolean alreadyExists = existingModels.stream()
+                            .anyMatch(model -> model.getName().equalsIgnoreCase(newModel.getName()));
+
+                        if (!alreadyExists) {
+                            existingModels.add(newModel);
+                            addModelToComboBox(newModel.getName()); // Aggiungere alla combobox
+                        }
+                    }
+
+                    preferencesManager.setGenAIModelList(existingModels, entry.getKey());
+                }
+
+                JOptionPane.showMessageDialog(modelSelectionDialog,
+                    "Added " + selectedModels.size() + " models successfully!",
+                    "Success", JOptionPane.INFORMATION_MESSAGE);
+
+                modelSelectionDialog.dispose();
+            });
+
+            cancelButton.addActionListener(ev -> modelSelectionDialog.dispose());
+
+            modelSelectionDialog.setVisible(true);
+        });
+
+
+        // Menu item to remove the selected model
+        JMenuItem removeModelItem = new JMenuItem("Remove selected model");
+        removeModelItem.addActionListener(e -> {
+            String selectedModel = (String) modelComboBox.getSelectedItem();
+            if (selectedModel != null) {
+                int confirm = JOptionPane.showConfirmDialog(
+                    this,
+                    "Are you sure you want to remove the model: " + selectedModel + "?",
+                    "Confirm Removal",
+                    JOptionPane.YES_NO_OPTION
+                );
+
+                if (confirm == JOptionPane.YES_OPTION) {
+                    removeModelFromComboBox(selectedModel);
+                }
+            }
+        });
+
+        // Menu item to clear all models
+        JMenuItem clearModelsItem = new JMenuItem("Clear all models");
+        clearModelsItem.addActionListener(e -> {
+            int confirm = JOptionPane.showConfirmDialog(
+                this,
+                "Are you sure you want to remove all models?",
+                "Confirm Clear",
+                JOptionPane.YES_NO_OPTION
+            );
+
+            if (confirm == JOptionPane.YES_OPTION) {
+                clearModelComboBox();
+            }
+        });
+
+        modelsPopupMenu.add(addModelManuallyItem);
+        modelsPopupMenu.add(downloadModelsItem);
+        modelsPopupMenu.add(removeModelItem);
+        modelsPopupMenu.addSeparator();
+        modelsPopupMenu.add(clearModelsItem);
+    }
+
+    private void launchExplorer(File directory) {
+        // Check if the Desktop API is supported by the current platform
+        if (Desktop.isDesktopSupported()) {
+            Desktop desktop = Desktop.getDesktop();
+            try {
+                // Check if the open action is supported
+                if (desktop.isSupported(Desktop.Action.OPEN)) {
+                    // Open the specified directory in the system's file explorer
+                    desktop.open(directory);
+                } else {
+                    JOptionPane.showMessageDialog(this,
+                        "Open action not supported on this platform.",
+                        "Error",
+                        JOptionPane.ERROR_MESSAGE);
+                }
+            } catch (IOException x) {
+                // Handle IO exceptions (e.g., if the directory doesn't exist)
+                Exceptions.printStackTrace(x);
+                JOptionPane.showMessageDialog(this,
+                    "Could not open directory: " + x.getMessage(),
+                    "Error",
+                    JOptionPane.ERROR_MESSAGE);
+            }
+        } else {
+            JOptionPane.showMessageDialog(this,
+                "Desktop API not supported on this platform.",
+                "Error",
+                JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JPanel JPanel2;
     private javax.swing.JPanel JPanel3;
@@ -2538,7 +3092,7 @@ final class AIAssistancePanel extends javax.swing.JPanel {
     private javax.swing.JPanel JPanel5;
     private javax.swing.JPanel JPanel6;
     private javax.swing.JPanel JPanel7;
-    private javax.swing.JPanel activationPanel;
+    private javax.swing.JPanel activationPane;
     private javax.swing.JPanel activationParentPane;
     private javax.swing.JCheckBox aiAssistantActivationCheckBox;
     private javax.swing.ButtonGroup aiInlineCompletionShortcutGroup;
@@ -2565,6 +3119,9 @@ final class AIAssistancePanel extends javax.swing.JPanel {
     private javax.swing.JPanel classContextPane;
     private javax.swing.JButton cleanDataButton;
     private javax.swing.JPanel commonSettingsParentPane1;
+    private javax.swing.JLabel configPathBtn;
+    private javax.swing.JLabel configPathLabel;
+    private javax.swing.JPanel configPathPane;
     private javax.swing.JComboBox<String> conversationContext;
     private javax.swing.JLabel conversationContextLabel;
     private javax.swing.JRadioButton ctrlAltSpaceRadioButton;

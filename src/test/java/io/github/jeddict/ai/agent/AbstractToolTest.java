@@ -1,6 +1,6 @@
 package io.github.jeddict.ai.agent;
 
-import io.github.jeddict.ai.test.BaseTest;
+import io.github.jeddict.ai.test.TestBase;
 import io.github.jeddict.ai.test.DummyTool;
 import static io.github.jeddict.ai.agent.AbstractTool.PROPERTY_MESSAGE;
 import java.beans.PropertyChangeEvent;
@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.BDDAssertions.then;
 import static org.assertj.core.api.BDDAssertions.thenThrownBy;
 
-public class AbstractToolTest extends BaseTest {
+public class AbstractToolTest extends TestBase {
 
     @Test
     public void constructor_sets_instance_variables() {

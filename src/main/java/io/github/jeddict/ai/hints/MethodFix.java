@@ -20,10 +20,9 @@ import com.sun.source.tree.Tree;
 import static com.sun.source.tree.Tree.Kind.METHOD;
 import com.sun.source.util.TreePath;
 import io.github.jeddict.ai.JeddictUpdateManager;
+import io.github.jeddict.ai.agent.pair.PairProgrammer;
 import io.github.jeddict.ai.completion.Action;
-import io.github.jeddict.ai.lang.JeddictBrain;
 import static io.github.jeddict.ai.scanner.ProjectClassScanner.getClassDataContent;
-import io.github.jeddict.ai.settings.PreferencesManager;
 import io.github.jeddict.ai.util.SourceUtil;
 import static io.github.jeddict.ai.util.StringUtil.removeCodeBlockMarkers;
 import static io.github.jeddict.ai.util.UIUtil.queryToEnhance;
@@ -31,42 +30,37 @@ import java.io.IOException;
 import javax.lang.model.element.Element;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
+import org.apache.commons.lang3.StringUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.netbeans.api.java.source.ElementHandle;
 import org.netbeans.api.java.source.JavaSource;
 import org.netbeans.api.java.source.TreePathHandle;
 import org.netbeans.api.java.source.WorkingCopy;
 import org.netbeans.api.project.FileOwnerQuery;
+import org.netbeans.api.project.Project;
 import org.netbeans.modules.editor.indent.api.Reformat;
 import org.netbeans.spi.java.hints.JavaFix;
 import org.openide.util.Exceptions;
 import org.openide.util.NbBundle;
+import io.github.jeddict.ai.agent.pair.RefactorSpecialist;
 
 /**
  *
  * @author Shiwani Gupta
  */
-public class MethodFix extends JavaFix {
+public class MethodFix extends BaseAIFix {
 
-    private ElementHandle classType;
-    private final Action action;
     private String actionTitleParam;
     private String compliationError;
-    
-    private static final PreferencesManager prefsManager = PreferencesManager.getInstance();
 
-    public MethodFix(TreePathHandle tpHandle, Action action, ElementHandle classType) {
-        super(tpHandle);
-        this.classType = classType;
-        this.action = action;
+    public MethodFix(final TreePathHandle treePathHandle, final Action action) {
+        super(treePathHandle, action);
     }
 
-    public MethodFix(TreePathHandle tpHandle, String compliationError, String actionTitleParam) {
-        super(tpHandle);
+    public MethodFix(final TreePathHandle treePathHandle, final String compliationError, final String actionTitleParam) {
+        super(treePathHandle, Action.COMPILATION_ERROR);
         this.compliationError = compliationError;
         this.actionTitleParam = actionTitleParam;
-        this.action = Action.COMPILATION_ERROR;
     }
 
     @Override
@@ -86,44 +80,61 @@ public class MethodFix extends JavaFix {
         if (copy.toPhase(JavaSource.Phase.RESOLVED).compareTo(JavaSource.Phase.RESOLVED) < 0) {
             return;
         }
-
         TreePath treePath = tc.getPath();
         Tree leaf = treePath.getLeaf();
-
         Element elm = copy.getTrees().getElement(treePath);
         if (elm == null) {
             return;
         }
-
         String content = null;
-
         if (leaf.getKind() == METHOD) {
-            if (action == Action.COMPILATION_ERROR) {
-                String classDataContent = getClassDataContent(
-                        copy.getFileObject(),
-                        copy.getCompilationUnit(),
-                        prefsManager.getClassContext()
-                );
-                    
-                content = new JeddictBrain().fixMethodCompilationError(
-                FileOwnerQuery.getOwner(copy.getFileObject()), 
-                treePath.getParentPath().getLeaf().toString(), 
-                leaf.toString(), 
-                compliationError,
-                classDataContent);
-            } else if (action == Action.ENHANCE) {
-                content = new JeddictBrain().enhanceMethodFromMethodContent(
-                FileOwnerQuery.getOwner(copy.getFileObject()), 
-                treePath.getParentPath().getLeaf().toString(), leaf.toString());
-            } else {
-                String query = queryToEnhance();
-                if (query == null) {
-                    return;
+            final Project project = FileOwnerQuery.getOwner(copy.getFileObject());
+            final RefactorSpecialist pair = newJeddictBrain().pairProgrammer(PairProgrammer.Specialist.REFACTOR);
+            final String classSource = treePath.getParentPath().getLeaf().toString();
+            final String methodSource = leaf.toString();
+
+            content = switch (action) {
+                case COMPILATION_ERROR -> {
+                    final String classDataContent = getClassDataContent(
+                        copy.getFileObject(), copy.getCompilationUnit(), pm.getClassContext()
+                    );
+
+                    LOG.finest(() -> "\nmethodSource: " + StringUtils.abbreviate(methodSource, 80)
+                        + "\nclassSource: " + StringUtils.abbreviate(classSource, 80)
+                        + "\nclassDataContent: " + StringUtils.abbreviate(classDataContent, 80)
+                        + "\nglobalRules: " + globalRules()
+                        + "\nprohectRules: " + projectRules(project)
+                    );
+                    yield pair.fixMethodCompilationError(
+                        compliationError, classSource + "\n" + classDataContent, methodSource, globalRules(), projectRules(project)
+                    );
                 }
-                content = new JeddictBrain().updateMethodFromDevQuery(
-                FileOwnerQuery.getOwner(copy.getFileObject()), 
-                treePath.getParentPath().getLeaf().toString(), leaf.toString(), query);
-            }
+                case ENHANCE -> {
+                    LOG.finest(() -> "\nmethodSource: " + StringUtils.abbreviate(methodSource, 80)
+                        + "\nclassSource: " + StringUtils.abbreviate(classSource, 80)
+                        + "\nglobalRules: " + globalRules()
+                        + "\nprohectRules: " + projectRules(project)
+                    );
+                    yield pair.enhanceMethodFromMethodContent(
+                        classSource, methodSource, globalRules(), projectRules(project)
+                    );
+                }
+                default -> {
+                    String query = queryToEnhance();
+                    if (query == null) {
+                        yield "";
+                    }
+                    LOG.finest(() -> "prompt: " + query
+                        + "\nmethodSource: " + StringUtils.abbreviate(methodSource, 80)
+                        + "\nclassSource: " + StringUtils.abbreviate(classSource, 80)
+                        + "\nglobalRules: " + globalRules()
+                        + "\nprohectRules: " + projectRules(project)
+                    );
+                    yield pair.refactor(
+                        query, classSource, methodSource, globalRules(), projectRules(project)
+                    );
+                }
+            };
         }
 
         if (content == null) {
@@ -132,9 +143,8 @@ public class MethodFix extends JavaFix {
 
         JSONObject json = new JSONObject(removeCodeBlockMarkers(content));
         JSONArray imports = json.getJSONArray("imports");
-        String methodContent = json.getString("methodContent");
+        String methodContent = json.getString("content");
         SourceUtil.addImports(copy, imports);
-
         if (leaf instanceof MethodTree methodTree) {
             long startPos = copy.getTrees().getSourcePositions().getStartPosition(copy.getCompilationUnit(), methodTree);
             long endPos = copy.getTrees().getSourcePositions().getEndPosition(copy.getCompilationUnit(), methodTree);
@@ -145,7 +155,8 @@ public class MethodFix extends JavaFix {
             }
         }
     }
-    
+
+
     private void insertAndReformat(Document document, String content, int startPosition, int lengthToRemove) {
     try {
         if (lengthToRemove > 0) {

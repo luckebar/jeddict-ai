@@ -17,7 +17,6 @@ package io.github.jeddict.ai.lang;
 
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import io.github.jeddict.ai.lang.impl.AnthropicBuilder;
 import io.github.jeddict.ai.lang.impl.AnthropicStreamingBuilder;
 import io.github.jeddict.ai.lang.impl.GoogleBuilder;
@@ -49,6 +48,7 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.logging.Logger;
 
 /**
  *
@@ -56,87 +56,58 @@ import java.util.function.Predicate;
  */
 public class JeddictChatModelBuilder {
 
+    public final Logger LOG = Logger.getLogger(JeddictChatModelBuilder.class.getCanonicalName());
+
     protected static PreferencesManager pm = PreferencesManager.getInstance();
-    private StreamingChatResponseHandler handler;
     private String modelName;
 
     public JeddictChatModelBuilder() {
         this(null);
     }
 
-    public JeddictChatModelBuilder(StreamingChatResponseHandler handler) {
-        this(handler, pm.getModel());
-    }
-
-    public JeddictChatModelBuilder(StreamingChatResponseHandler handler, String modelName) {
-        this.handler = handler;
+    public JeddictChatModelBuilder(String modelName) {
         this.modelName = modelName; // P2 - TODO: can this be null?
     }
 
     public ChatModel build() {
+        LOG.finest(() -> "Building model " + modelName);
+
         if (modelName == null) {
             throw new IllegalArgumentException("modelName can not be null");
         }
 
-        ChatModel model = null;
-        switch (pm.getProvider()) {
-            case GOOGLE -> {
-                model = buildModel(new GoogleBuilder(), modelName);
-            }
-            case OPEN_AI, DEEPINFRA, DEEPSEEK, GROQ, CUSTOM_OPEN_AI, COPILOT_PROXY, PERPLEXITY -> {
-                model = buildModel(new OpenAiBuilder(), modelName);
-            }
-            case MISTRAL -> {
-                model = buildModel(new MistralBuilder(), modelName);
-            }
-            case ANTHROPIC -> {
-                model = buildModel(new AnthropicBuilder(), modelName);
-            }
-            case OLLAMA -> {
-                model = buildModel(new OllamaBuilder(), modelName);
-            }
-            case LM_STUDIO -> {
-                model = buildModel(new LMStudioBuilder(), modelName);
-            }
-            case GPT4ALL -> {
-                model = buildModel(new LocalAiBuilder(), modelName);
-            }
-        }
+        return switch (pm.getProvider()) {
+            case GOOGLE -> buildModel(new GoogleBuilder(), modelName);
+            case OPEN_AI, DEEPINFRA, DEEPSEEK, GROQ, CUSTOM_OPEN_AI, COPILOT_PROXY, PERPLEXITY -> buildModel(new OpenAiBuilder(), modelName);
+            case MISTRAL -> buildModel(new MistralBuilder(), modelName);
+            case ANTHROPIC -> buildModel(new AnthropicBuilder(), modelName);
+            case OLLAMA -> buildModel(new OllamaBuilder(), modelName);
+            case LM_STUDIO -> buildModel(new LMStudioBuilder(), modelName);
+            case GPT4ALL -> buildModel(new LocalAiBuilder(), modelName);
+            default -> {
+                final String msg = String.format("No model %s found for provider %s, this is most likely a bug", modelName, pm.getProvider());
 
-        // TODO: P2 - what if none of those?
-
-        return model;
+                LOG.severe(msg); throw new IllegalArgumentException(msg);
+            }
+        };
     }
 
     public StreamingChatModel buildStreaming() {
-        // TODO: P3 - if (!pm.isStreamEnabled() || handler != null) throw IllegalStateException
+        LOG.finest(() -> "Building streaming model " + modelName);
 
-        StreamingChatModel model = null;
-        switch (pm.getProvider()) {
-            case GOOGLE -> {
-                model = buildModel(new GoogleStreamingBuilder(), modelName);
-            }
-            case OPEN_AI, DEEPINFRA, DEEPSEEK, GROQ, CUSTOM_OPEN_AI, COPILOT_PROXY, PERPLEXITY -> {
-                model = buildModel(new OpenAiStreamingBuilder(), modelName);
-            }
-            case MISTRAL -> {
-                model = buildModel(new MistralStreamingBuilder(), modelName);
-            }
-            case ANTHROPIC -> {
-                model = buildModel(new AnthropicStreamingBuilder(), modelName);
-            }
-            case OLLAMA -> {
-                model = buildModel(new OllamaStreamingBuilder(), modelName);
-            }
-            case GPT4ALL -> {
-                model = buildModel(new LocalAiStreamingBuilder(), modelName);
-            }
-        }
+        return switch (pm.getProvider()) {
+            case GOOGLE -> buildModel(new GoogleStreamingBuilder(), modelName);
+            case OPEN_AI, DEEPINFRA, DEEPSEEK, GROQ, CUSTOM_OPEN_AI, COPILOT_PROXY, PERPLEXITY -> buildModel(new OpenAiStreamingBuilder(), modelName);
+            case MISTRAL -> buildModel(new MistralStreamingBuilder(), modelName);
+            case ANTHROPIC -> buildModel(new AnthropicStreamingBuilder(), modelName);
+            case OLLAMA -> buildModel(new OllamaStreamingBuilder(), modelName);
+            case GPT4ALL -> buildModel(new LocalAiStreamingBuilder(), modelName);
+            default -> {
+                final String msg = String.format("No streaming model %s found for provider %s", modelName, pm.getProvider());
 
-        // TODO: what if none of those?
-
-        return model;
-
+                LOG.severe(msg); throw new IllegalArgumentException(msg);
+            }
+        };
     }
 
     private <T> void setIfValid(final Consumer<T> setter, final T value, final T invalidValue) {

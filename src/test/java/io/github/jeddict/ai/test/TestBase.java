@@ -15,15 +15,17 @@
  */
 package io.github.jeddict.ai.test;
 
-import io.github.jeddict.ai.test.DummyLogHandler;
+import static com.github.stefanbirkner.systemlambda.SystemLambda.restoreSystemProperties;
+import io.github.jeddict.ai.settings.PreferencesManager;
 import java.io.FileWriter;
-import java.io.IOException;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.io.TempDir;
@@ -31,15 +33,29 @@ import org.junit.jupiter.api.io.TempDir;
 /**
  *
  */
-public class BaseTest {
+public class TestBase {
+
+    protected final Logger LOG = Logger.getAnonymousLogger();
+
+    public final static String WINDOWS = "Windows 10";
+    public final static String LINUX = "Linux";
+    public final static String MACOS = "Mac OS X";
+    public final static String USER = "user";
+
     protected String projectDir;
     protected DummyLogHandler logHandler;
+    //
+    // Settings are currently saved in a file in the user home (see
+    // PreferencesManager and FilePreferences). To be able to manipulate them
+    // without side effects, we set up a different user home
+    //
+    protected PreferencesManager preferences;
 
     @TempDir
     protected Path HOME;
 
     @BeforeEach
-    public void beforeEach() throws IOException {
+    public void beforeEach() throws Exception {
         projectDir = HOME.resolve("dummy-project").toString();
 
         Logger logger = Logger.getLogger("io.github.jeddict.ai");
@@ -50,10 +66,30 @@ public class BaseTest {
         try (Writer w = new FileWriter(folder.resolve("testfile.txt").toFile())) {
             w.append("This is a test file content for real file testing.");
         }
+
+        Files.copy(Paths.get(
+        "src/test/resources/settings/jeddict.json"),
+        HOME.resolve("jeddict.json"),
+        StandardCopyOption.REPLACE_EXISTING
+        );
+
+        //
+        // Making sure the singleton is initilazed with a testing configuration
+        // file under a temporary directory
+        //
+        restoreSystemProperties(() -> {
+            System.setProperty("user.home", HOME.toAbsolutePath().toString());
+
+            preferences = PreferencesManager.getInstance();
+        });
     }
 
     @AfterEach
     public void afterEach() {
         Logger.getLogger(getClass().getPackageName()).removeHandler(logHandler);
+    }
+
+    protected void thenPathsAreEqual(final Path p1, final Path p2) {
+        then(p1.toUri().getPath()).isEqualTo(p2.toUri().getPath());
     }
 }

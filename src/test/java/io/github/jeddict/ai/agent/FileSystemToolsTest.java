@@ -15,7 +15,7 @@
  */
 package io.github.jeddict.ai.agent;
 
-import io.github.jeddict.ai.test.BaseTest;
+import io.github.jeddict.ai.test.TestBase;
 import static io.github.jeddict.ai.agent.AbstractTool.PROPERTY_MESSAGE;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
@@ -30,7 +30,7 @@ import static org.assertj.core.api.BDDAssertions.then;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
-public class FileSystemToolsTest extends BaseTest {
+public class FileSystemToolsTest extends TestBase {
 
     @AfterEach
     public void afterEach() {

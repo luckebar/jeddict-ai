@@ -75,7 +75,6 @@ public class ProjectClassListener {
                 if (FileUtil.isParentOf(javaFolder2, dataObj.getPrimaryFile())) {
                     pendingDO.add(dataObj);
                     classDatas.remove(dataObj.getPrimaryFile());
-                    System.out.println("Modified DataObject: " + dataObj.getName());
                 } else {
                     System.out.println("");
                 }
